@@ -1,2 +1,4 @@
 
-test('test', () => expect(true).toEqual(true));
+import hw from '../src';
+
+test('test', () => expect(hw()).toEqual('hello'));
