@@ -5,14 +5,27 @@
   </head>
   <body>
     <div class="jumbotron">
+      <div class="container">
         <h1 class="display-4">RSS aggregator</h1>
-        <p class="lead">
-          <input class="lead form-control"></input>
-        </p>
-        <p class="lead">
-          <a class="btn btn-primary btn-lg" href="#" role="button" type="submit">OK</a>
-        </p>
+        <form>
+          <div class="row">
+            <div class="col-md-11"> 
+              <input class="lead form-control"></input>
+            </div>
+            <div class="col-md-1">
+              <a class="btn btn-primary" href="#" role="button" type="submit">OK</a>
+            </div>
+          </div>
+        </div>
+      </form>
     </div>
-    <div id='lists'></div>
+    <div class="container" id='lists'>
+      <div class="row">
+        <div class="col-md-3" id='channels'>
+        </div>
+        <div class="col-md-9" id='posts'>
+        </div>
+      </div> 
+    </div>
   </body>
 </html>

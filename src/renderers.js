@@ -1,4 +1,23 @@
+import i18next from 'i18next';
+import resources from './locales';
+
 export const renderForm = (state, elements) => {
+  i18next.init({
+    lng: 'en', // Текущий язык
+    debug: true,
+    resources,
+    //   en: {
+    //     translation: {
+    //       mainButton: 'OK',
+    //       heading: 'RSS aggregator',
+    //     },
+    //   },
+    // },
+  }).then(t => {
+    elements.elementButton.textContent = i18next.t('mainButton');
+    elements.elementHeading.textContent = i18next.t('heading');
+  });
+
   const parentInput = elements.elementInput.parentElement;
   const invalidDiv = parentInput.querySelector('div.invalid-feedback');
   elements.elementInput.classList.remove('is-invalid');
@@ -16,10 +35,10 @@ export const renderForm = (state, elements) => {
   if (invalidDiv) {
     invalidDiv.remove();
   }
-  if (state.form.message.error) {
+  if (state.form.messageCode) {
     const newInvalidDiv = document.createElement('div');
     newInvalidDiv.classList.add('invalid-feedback');
-    newInvalidDiv.textContent = state.form.message.text;
+    newInvalidDiv.textContent = i18next.t(`errorMessages.${state.form.messageCode}`);
     parentInput.append(newInvalidDiv);
   }
   if (!state.form.submitActive || state.form.inputField.text === '') {
@@ -28,25 +47,30 @@ export const renderForm = (state, elements) => {
 };
 
 export const renderChannels = (state, elements) => {
-  elements.elementLists.innerHTML = '';
+  // elements.elementLists.innerHTML = '';
+  elements.elementChannels.innerHTML = '';
+  elements.elementPosts.innerHTML = '';
 
-  const elementChannels = document.createElement('ul');
+  const ulChannels = document.createElement('ul');
   state.channels.forEach((channel) => {
-    const elementChannel = document.createElement('li');
-    elementChannel.textContent = `id: ${channel.id}, title: ${channel.title}, desc: ${channel.description}, link: ${channel.link}`;
-    elementChannels.appendChild(elementChannel);
+    const liChannel = document.createElement('li');
+    // liChannel.textContent = `id: ${channel.id}, title: ${channel.title}, desc: ${channel.description}, link: ${channel.link}`;
+    liChannel.textContent = `${channel.title}: ${channel.description}`;
+    ulChannels.appendChild(liChannel);
   });
-  elements.elementLists.append(elementChannels);
+  elements.elementChannels.append(ulChannels);
 
-  const elementPosts = document.createElement('ul');
+  const ulPosts = document.createElement('ul');
+  ulPosts.classList.add('list-group');
   state.posts.forEach((post) => {
-    const elementPost = document.createElement('li');
+    const liPost = document.createElement('li');
+    liPost.classList.add('list-group-item');
     const link = document.createElement('a');
     link.setAttribute('href', post.link);
     link.textContent = post.title;
-    elementPost.append(link);
-    elementPosts.appendChild(elementPost);
-    elements.elementLists.append(elementPosts);
+    liPost.append(link);
+    ulPosts.appendChild(liPost);
+    elements.elementPosts.append(ulPosts);
   });
 };
 
@@ -55,11 +79,11 @@ export const renderSpinner = (state, elements) => {
     const div = document.createElement('div');
     div.innerHTML = `<strong>Loading...</strong>
       <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>`;
-    div.classList.add('d-flex', 'align-items-center');
-    elements.elementJumb.append(div);
+    div.classList.add('d-flex', 'align-items-centr', 'pt-3', 'pr-3');
+    elements.elementForm.append(div);
   }
   if (state.statusForm === 'filling') {
-    const elementSpinner = elements.elementJumb.querySelector('.d-flex');
+    const elementSpinner = elements.elementForm.querySelector('.d-flex');
     elementSpinner.remove();
   }
 };
