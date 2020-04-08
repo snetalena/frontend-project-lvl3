@@ -3,8 +3,9 @@ export default {
     mainButton: 'OK',
     heading: 'RSS aggregator',
     errorMessages: {
-      invalidURL: 'invalid URL!',
-      doublicatedURL: 'doublicated URL!',
+      invalidURL: 'Invalid URL!',
+      doublicatedURL: 'Doublicated URL!',
     },
+    allChannels: 'All',
   },
 };

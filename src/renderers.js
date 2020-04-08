@@ -6,14 +6,7 @@ export const renderForm = (state, elements) => {
     lng: 'en', // Текущий язык
     debug: true,
     resources,
-    //   en: {
-    //     translation: {
-    //       mainButton: 'OK',
-    //       heading: 'RSS aggregator',
-    //     },
-    //   },
-    // },
-  }).then(t => {
+  }).then(() => {
     elements.elementButton.textContent = i18next.t('mainButton');
     elements.elementHeading.textContent = i18next.t('heading');
   });
@@ -46,33 +39,61 @@ export const renderForm = (state, elements) => {
   }
 };
 
-export const renderChannels = (state, elements) => {
-  // elements.elementLists.innerHTML = '';
-  elements.elementChannels.innerHTML = '';
+export const renderPosts = (state, elements) => {
   elements.elementPosts.innerHTML = '';
-
-  const ulChannels = document.createElement('ul');
-  state.channels.forEach((channel) => {
-    const liChannel = document.createElement('li');
-    // liChannel.textContent = `id: ${channel.id}, title: ${channel.title}, desc: ${channel.description}, link: ${channel.link}`;
-    liChannel.textContent = `${channel.title}: ${channel.description}`;
-    ulChannels.appendChild(liChannel);
-  });
-  elements.elementChannels.append(ulChannels);
+  const activeChannel = elements.elementChannels.querySelector('.active');
+  const activeChannelId = activeChannel.getAttribute('id');
+  const activePosts = activeChannelId === 'all'
+    ? state.posts
+    : state.posts.filter((post) => post.channelId === activeChannelId);
 
   const ulPosts = document.createElement('ul');
   ulPosts.classList.add('list-group');
-  state.posts.forEach((post) => {
+  activePosts.forEach((post) => {
     const liPost = document.createElement('li');
     liPost.classList.add('list-group-item');
     const link = document.createElement('a');
     link.setAttribute('href', post.link);
     link.textContent = post.title;
+    liPost.setAttribute('channelId', post.channelId);
     liPost.append(link);
     ulPosts.appendChild(liPost);
     elements.elementPosts.append(ulPosts);
   });
 };
+
+export const renderChannels = (state, elements) => {
+  elements.elementChannels.innerHTML = '';
+
+  const ulChannels = document.createElement('ul');
+  ulChannels.classList.add('list-group');
+
+  const allChannel = document.createElement('li');
+  allChannel.textContent = i18next.t('allChannels');
+  allChannel.setAttribute('id', 'all');
+  allChannel.classList.add('list-group-item', 'list-group-item-action', 'active');
+  ulChannels.appendChild(allChannel);
+
+  state.channels.forEach((channel) => {
+    const liChannel = document.createElement('li');
+    liChannel.classList.add('list-group-item', 'list-group-item-action');
+    liChannel.textContent = `${channel.title}: ${channel.description}`;
+    liChannel.setAttribute('id', channel.id);
+    ulChannels.appendChild(liChannel);
+  });
+  elements.elementChannels.append(ulChannels);
+
+  ulChannels.addEventListener('click', (event) => {
+    const activeChannel = ulChannels.querySelector('.active');
+    if (activeChannel) {
+      activeChannel.classList.remove('active');
+    }
+    event.target.classList.add('active');
+    renderPosts(state, elements);
+  });
+};
+
+
 
 export const renderSpinner = (state, elements) => {
   if (state.statusForm === 'loading') {
