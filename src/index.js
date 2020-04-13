@@ -17,7 +17,7 @@ const markFormValid = (form) => {
   form.submitActive = true;
   form.inputField.active = true;
   form.inputField.valid = true;
-  form.messageCode = null;
+  form.message.code = null;
   // form.message.error = false;
   form.submitActive = true;
 };
@@ -25,22 +25,55 @@ const markFormValid = (form) => {
 const markFormInvalid = (form, messageCode) => {
   form.submitActive = false;
   form.inputField.active = true;
-  form.inputField.valid = messageCode ? false : true;
-  form.messageCode = messageCode;
+  form.inputField.valid = messageCode === 'successLoad';
+  form.message.code = messageCode;
   // form.message.error = message ? true : false;
   form.submitActive = false;
 };
 
-const addParsedDataToState = (parsedData, state) => {
-  const channelAdded = state.channels.find((channel) => channel.rssLink === parsedData.rssLink);
-  const channelId = channelAdded ? channelAdded.id : uniqueId();
-  state.channels.push({
-    id: channelId,
-    rssLink: parsedData.rssLink,
-    title: parsedData.channelTitle,
-    description: parsedData.channelDescription,
-  });
+const sendRequest = (url) => {
+  const proxy = 'cors-anywhere.herokuapp.com';
+  // TODO: handle http
+  const link = url.slice(url.indexOf('/') + 2);
+  return axios.get(`https://${proxy}/${link}`);
+};
 
+const filterNewChannelData = (parsedChannelData, state) => {
+  const newPosts = [];
+  parsedChannelData.posts.forEach((post) => {
+    if (!state.posts.find((statePost) => statePost.link === post.link
+      && statePost.title === post.title)) {
+      newPosts.push({ title: post.title, link: post.link });
+    }
+  });
+  // const maxPubDateAdded = state.posts.reduce(
+  //   (acc, post) => (acc > post.pubDate ? acc : post.pubDate),
+  //   0,
+  // );
+  // const newPosts = parsedChannelData.posts.filter((post) => post.pubDate > maxPubDateAdded);
+
+  // if (newPosts.length === 0) {
+  //   return null;
+  // }
+  return {
+    rssLink: parsedChannelData.rssLink,
+    channelTitle: parsedChannelData.channelTitle,
+    channelDescription: parsedChannelData.channelDescription,
+    posts: newPosts,
+  };
+};
+
+const addParsedDataToState = (parsedData, state) => {
+  const channelExists = state.channels.find((channel) => channel.rssLink === parsedData.rssLink);
+  const channelId = channelExists ? channelExists.id : uniqueId();
+  if (!channelExists) {
+    state.channels.push({
+      id: channelId,
+      rssLink: parsedData.rssLink,
+      title: parsedData.channelTitle,
+      description: parsedData.channelDescription,
+    });
+  }
   parsedData.posts.forEach((post) => {
     state.posts.push({
       id: uniqueId(),
@@ -51,6 +84,15 @@ const addParsedDataToState = (parsedData, state) => {
     });
   });
 };
+
+const upsertFromUrl = (url, state) => sendRequest(url)
+  .then((response) => getChannelData(response.request.responseText))
+  .then((channelData) => {
+    channelData.rssLink = url;
+    return filterNewChannelData(channelData, state);
+  })
+  .then((filteredData) => addParsedDataToState(filteredData, state));
+  // .catch((error) => Promise.reject(new Error(error.response.status)));
 
 const newFunc = () => {
   //  export default async () => {
@@ -66,9 +108,11 @@ const newFunc = () => {
         active: true,
         valid: true,
       },
-      messageCode: null,
-      // code: null,
-      // error: false,
+      // messageCode: null,
+      message: {
+        code: null,
+        type: null, // errorRequest, errorUrl, success
+      },
     },
     channels: [], // { id, rssLink, title, description }
     posts: [], // { id, channelId, title, link, pubDate }
@@ -77,17 +121,27 @@ const newFunc = () => {
 
   const elements = {
     elementHeading: document.querySelector('.display-4'),
-    elementJumb: document.querySelector('.jumbotron'),
     elementInput: document.querySelector('input'),
     elementButton: document.querySelector('.btn[type="submit"]'),
     elementChannels: document.getElementById('channels'),
     elementPosts: document.getElementById('posts'),
     elementForm: document.querySelector('form'),
+    elementFeedback: document.getElementById('feedback'),
   };
 
   renderForm(state, elements);
   renderChannels(state, elements);
   renderPosts(state, elements);
+
+  const updatePosts = () => {
+    const promises = [];
+    state.channels.forEach((channel) => {
+      promises.push(upsertFromUrl(channel.rssLink, state));
+    });
+    Promise.all(promises)
+      .finally(() => setTimeout(() => updatePosts(), 5000));
+  };
+  updatePosts(state);
 
   watch(state, 'form', () => {
     renderForm(state, elements);
@@ -105,86 +159,56 @@ const newFunc = () => {
     renderSpinner(state, elements);
   });
 
+  const checkUrlValid = (url) => schema.isValid({ website: url }).then((valid) => {
+    if (valid) {
+      markFormValid(state.form);
+      return;
+    }
+    state.form.message.type = 'errorUrl';
+    markFormInvalid(state.form, 'invalidURL');
+  });
+
   elements.elementInput.focus();
   elements.elementInput.addEventListener('keyup', async (event) => {
     const currentText = event.target.value;
     state.form.inputField.text = currentText;
 
-    if (!await schema.isValid({ website: currentText })) {
-      markFormInvalid(state.form, 'invalidURL');
-      return;
-    }
+    // if (!await schema.isValid({ website: currentText })) {
+    //   markFormInvalid(state.form, 'invalidURL');
+    //   return;
+    // }
+    // if (!state.form.inputField.valid) {
+    //   return;
+    // }
 
-    if (state.channels.find((el) => el.link === currentText)) {
+    if (state.channels.find((el) => el.rssLink === currentText)) {
+      state.form.message.type = 'errorUrl';
       markFormInvalid(state.form, 'doublicatedURL');
       return;
     }
 
-    markFormValid(state.form);
+    checkUrlValid(currentText);
+
+    // markFormValid(state.form);
   });
 
-  const filterNewChannelData = (parsedChannelData, state) => {
-    // const newPosts = [];
-    // parsedChannelData.posts.forEach((post) => {
-    //   if (!state.posts.find((statePost) => statePost.link === post.link
-    //   || statePost.title === post.title)) {
-    //     newPosts.push({ title: post.title, link: post.link });
-    //   }
-    // });
-
-    const maxPubDateAdded = state.posts.reduce(
-      (acc, post) => (acc > post.pubDate ? acc : post.pubDate),
-      0,
-    );
-    const newPosts = parsedChannelData.posts.filter((post) => post.pubDate > maxPubDateAdded);
-    
-    if (newPosts.length === 0) {
-      return null;
-    }
-    return {
-      rssLink: parsedChannelData.rssLink,
-      channelTitle: parsedChannelData.channelTitle,
-      channelDescription: parsedChannelData.channelDescription,
-      posts: newPosts,
-    };
-  };
-
-  const sendRequest = async (url) => {
-    const proxy = 'cors-anywhere.herokuapp.com';
-    const link = url.slice(url.indexOf('/') + 2);
-    const response = await axios.get(`https://${proxy}/${link}`);
-
-    const updatePosts = (state) => {
-      state.channels.forEach(async (channel) => {
-        const data = await sendRequest(channel.rssLink);
-        // TODO: check response
-        const newChannelData = filterNewChannelData(getChannelData(data), state);
-        if (newChannelData) {
-          addParsedDataToState(newChannelData);
-        }
-      });
-    };
-
-    setTimeout(() => updatePosts(state), 5000);
-    return response.request.responseText;
-  };
-
-  elements.elementButton.addEventListener('click', async () => {
+  elements.elementForm.addEventListener('submit', (event) => {
+    event.preventDefault();
     state.statusForm = 'loading';
-    const data = await sendRequest(state.form.inputField.text);
-    // TODO: check response
-    const parsedData = getChannelData(data);
-    parsedData.rssLink = state.form.inputField.text;
-    addParsedDataToState(parsedData, state);
-    state.form.inputField.text = '';
-    markFormInvalid(state.form, null);
-    state.statusForm = 'filling';
+    upsertFromUrl(state.form.inputField.text, state)
+      .then(() => {
+        state.form.message.type = 'success';
+        state.form.inputField.text = '';
+        markFormInvalid(state.form, 'successLoad');
+      })
+      .catch((err) => {
+        state.form.message.type = 'errorRequest';
+        markFormInvalid(state.form, err.response.status);
+      })
+      .finally(() => {
+        state.statusForm = 'filling';
+      });
   });
-
-  // const buttonRefresh = document.querySelector('.btn-light');
-  // buttonRefresh.addEventListener('click', async () => {
-  //   updatePosts(state);
-  // });
 };
 
 newFunc(); // TODO: fix

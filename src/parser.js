@@ -9,7 +9,7 @@ const getChannelData = (data) => {
   const posts = items.map((post) => {
     const title = post.querySelector('title').textContent;
     const link = post.querySelector('link').textContent;
-    const pubDate = new Date(post.querySelector('pubDate').textContent);
+    const pubDate = new Date(post.querySelector('pubDate').textContent).toString();
     return { title, link, pubDate };
   });
 
