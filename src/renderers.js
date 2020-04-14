@@ -1,59 +1,64 @@
 import i18next from 'i18next';
 import resources from './locales';
 
-export const renderForm = (state, elements) => {
+const elements = {
+  heading: document.querySelector('.display-4'),
+  input: document.querySelector('input'),
+  button: document.querySelector('.btn[type="submit"]'),
+  channels: document.getElementById('channels'),
+  posts: document.getElementById('posts'),
+  form: document.querySelector('form'),
+  feedback: document.getElementById('feedback'),
+};
+
+export const renderForm = (state) => {
   i18next.init({
-    lng: 'en', // Текущий язык
+    lng: window.navigator.language.slice(0, 2),
     debug: true,
     resources,
   }).then(() => {
-    elements.elementButton.textContent = i18next.t('mainButton');
-    elements.elementHeading.textContent = i18next.t('heading');
+    elements.button.textContent = i18next.t('mainButton');
+    elements.heading.textContent = i18next.t('heading');
   });
 
-  // const parentInput = elements.elementInput.parentElement;
-  // const invalidDiv = parentInput.querySelector('div.invalid-feedback');
-  elements.elementInput.classList.remove('is-invalid');
-  elements.elementButton.classList.remove('disabled');
+  elements.input.classList.remove('is-invalid');
+  elements.button.classList.remove('disabled');
 
   if (!state.form.submitActive || state.form.inputField.text === '') {
-    elements.elementButton.classList.add('disabled');
+    elements.button.classList.add('disabled');
   }
 
-  elements.elementInput.value = state.form.inputField.text;
+  elements.input.value = state.form.inputField.text;
 
   if (!state.form.inputField.valid && state.form.inputField.text !== '') {
-    elements.elementInput.classList.add('is-invalid');
+    elements.input.classList.add('is-invalid');
   }
 
-  // if (invalidDiv) {
-  //   invalidDiv.remove();
-  // }
-  const newDiv = elements.elementFeedback;
-  while (newDiv.classList.length > 0) {
-    newDiv.classList.remove(newDiv.classList.item(0));
+  while (elements.feedback.classList.length > 0) {
+    elements.feedback.classList.remove(elements.feedback.classList.item(0));
   }
-  newDiv.innerHTML = '';
+  elements.feedback.innerHTML = '';
 
   if (state.form.message.code) {
-    // const newDiv = document.createElement('div');
-    newDiv.innerHTML = '';
     if (state.form.message.type === 'success') {
-      newDiv.classList.add('feedback', 'text-success');
+      elements.feedback.classList.add('feedback', 'text-success', 'pt-2');
     } else {
-      newDiv.classList.add('invalid-feedback');
+      elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
     }
-    newDiv.textContent = state.form.message.type === 'errorRequest'
+    elements.feedback.textContent = state.form.message.type === 'errorRequest'
       ? i18next.t('messages.errorRequest', { code: state.form.message.code })
       : i18next.t(`messages.${state.form.message.code}`);
-    // parentInput.append(newDiv);
   }
-
 };
 
-export const renderPosts = (state, elements) => {
-  elements.elementPosts.innerHTML = '';
-  const activeChannel = elements.elementChannels.querySelector('.list-group-item-primary');
+export const renderPosts = (state) => {
+  elements.posts.innerHTML = '';
+
+  if (state.posts.length === 0) {
+    return;
+  }
+
+  const activeChannel = elements.channels.querySelector('.list-group-item-primary');
   const activeChannelId = activeChannel.getAttribute('id');
   const activePosts = activeChannelId === 'all'
     ? state.posts
@@ -70,12 +75,16 @@ export const renderPosts = (state, elements) => {
     liPost.setAttribute('channelId', post.channelId);
     liPost.append(link);
     ulPosts.appendChild(liPost);
-    elements.elementPosts.append(ulPosts);
+    elements.posts.append(ulPosts);
   });
 };
 
-export const renderChannels = (state, elements) => {
-  elements.elementChannels.innerHTML = '';
+export const renderChannels = (state) => {
+  elements.channels.innerHTML = '';
+
+  if (state.channels.length === 0) {
+    return;
+  }
 
   const ulChannels = document.createElement('ul');
   ulChannels.classList.add('list-group');
@@ -93,7 +102,7 @@ export const renderChannels = (state, elements) => {
     liChannel.setAttribute('id', channel.id);
     ulChannels.appendChild(liChannel);
   });
-  elements.elementChannels.append(ulChannels);
+  elements.channels.append(ulChannels);
 
   ulChannels.addEventListener('click', (event) => {
     const activeChannel = ulChannels.querySelector('.list-group-item-primary');
@@ -105,16 +114,16 @@ export const renderChannels = (state, elements) => {
   });
 };
 
-export const renderSpinner = (state, elements) => {
+export const renderSpinner = (state) => {
   if (state.statusForm === 'loading') {
     const div = document.createElement('div');
     div.innerHTML = `<strong>Loading...</strong>
       <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>`;
     div.classList.add('d-flex', 'align-items-centr', 'pt-3', 'pr-3');
-    elements.elementForm.append(div);
+    elements.form.append(div);
   }
   if (state.statusForm === 'filling') {
-    const elementSpinner = elements.elementForm.querySelector('.d-flex');
+    const elementSpinner = elements.form.querySelector('.d-flex');
     elementSpinner.remove();
   }
 };

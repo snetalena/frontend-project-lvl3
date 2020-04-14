@@ -1,11 +1,12 @@
 export default {
   translation: {
-    mainButton: 'ОК',
+    mainButton: 'Добавить',
     heading: 'RSS агрегатор',
     errorMessages: {
       invalidURL: 'Невалидный URL!',
       doublicatedURL: 'Данный URL уже добавлен!',
-      404: 'RSS не найден. Пожалуйста, проверьте введенный адрес',
+      errorRequest: 'Запрос вернул ошибку с кодом {{code}}!',
+      successLoad: 'RSS успешно добавлен',
     },
     allChannels: 'Все',
   },

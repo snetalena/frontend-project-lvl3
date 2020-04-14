@@ -1,7 +1,7 @@
 const getChannelData = (data) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(data, 'application/xml');
-  // TODO: check if xml
+  // TODO: check if xml?
   const channelTitle = doc.querySelector('title').textContent;
   const channelDescription = doc.querySelector('description').textContent;
   const items = [...doc.querySelectorAll('item')];

@@ -1,6 +1,6 @@
 export default {
   translation: {
-    mainButton: 'OK',
+    mainButton: 'Add',
     heading: 'RSS reader',
     messages: {
       invalidURL: 'Invalid URL!',
