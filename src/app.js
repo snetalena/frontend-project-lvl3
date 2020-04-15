@@ -13,7 +13,7 @@ const sendRequest = (url) => {
   return axios.get(`https://${proxy}/${link}`);
 };
 
-const filterNewChannelData = (channelData, state) => {
+const filterChannelData = (channelData, state) => {
   const newPosts = [];
   channelData.posts.forEach((post) => {
     if (!state.posts.find((statePost) => statePost.link === post.link
@@ -52,12 +52,12 @@ const addChannelDataToState = (channelData, state) => {
   });
 };
 
-const upsertFromUrl = (url, state) => sendRequest(url)
+const upsertChannelDataFromUrl = (url, state) => sendRequest(url)
   .then((response) => getChannelData(response.request.responseText))
   .then((channelData) => {
     // eslint-disable-next-line no-param-reassign
     channelData.rssLink = url;
-    return filterNewChannelData(channelData, state);
+    return filterChannelData(channelData, state);
   })
   .then((filteredData) => addChannelDataToState(filteredData, state));
 
@@ -107,7 +107,7 @@ export default () => {
   const updatePosts = () => {
     const promises = [];
     state.channels.forEach((channel) => {
-      promises.push(upsertFromUrl(channel.rssLink, state));
+      promises.push(upsertChannelDataFromUrl(channel.rssLink, state));
     });
     Promise.all(promises)
       .finally(() => setTimeout(() => updatePosts(), 5000));
@@ -153,11 +153,12 @@ export default () => {
 
     checkUrlValid(currentText);
   });
+
   const elementForm = document.querySelector('form');
   elementForm.addEventListener('submit', (event) => {
     event.preventDefault();
     state.statusForm = 'loading';
-    upsertFromUrl(state.form.inputField.text, state)
+    upsertChannelDataFromUrl(state.form.inputField.text, state)
       .then(() => {
         state.form.message.type = 'success';
         state.form.inputField.text = '';

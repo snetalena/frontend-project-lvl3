@@ -1,7 +1,7 @@
 export default {
   translation: {
     mainButton: 'Add',
-    heading: 'RSS reader',
+    heading: 'RSS aggregator',
     messages: {
       invalidURL: 'Invalid URL!',
       doublicatedURL: 'Doublicated URL!',

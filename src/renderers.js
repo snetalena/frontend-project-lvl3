@@ -9,27 +9,26 @@ const elements = {
   posts: document.getElementById('posts'),
   form: document.querySelector('form'),
   feedback: document.getElementById('feedback'),
+  spinner: document.getElementById('spinner'),
 };
 
+i18next.init({
+  lng: window.navigator.language.slice(0, 2),
+  debug: true,
+  resources,
+}).then(() => {
+  elements.button.textContent = i18next.t('mainButton');
+  elements.heading.textContent = i18next.t('heading');
+});
+
 export const renderForm = (state) => {
-  i18next.init({
-    lng: window.navigator.language.slice(0, 2),
-    debug: true,
-    resources,
-  }).then(() => {
-    elements.button.textContent = i18next.t('mainButton');
-    elements.heading.textContent = i18next.t('heading');
-  });
-
-  elements.input.classList.remove('is-invalid');
   elements.button.classList.remove('disabled');
-
   if (!state.form.submitActive || state.form.inputField.text === '') {
     elements.button.classList.add('disabled');
   }
 
+  elements.input.classList.remove('is-invalid');
   elements.input.value = state.form.inputField.text;
-
   if (!state.form.inputField.valid && state.form.inputField.text !== '') {
     elements.input.classList.add('is-invalid');
   }
@@ -38,26 +37,23 @@ export const renderForm = (state) => {
     elements.feedback.classList.remove(elements.feedback.classList.item(0));
   }
   elements.feedback.innerHTML = '';
-
   if (state.form.message.code) {
-    if (state.form.message.type === 'success') {
-      elements.feedback.classList.add('feedback', 'text-success', 'pt-2');
-    } else {
-      elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
-    }
     elements.feedback.textContent = state.form.message.type === 'errorRequest'
       ? i18next.t('messages.errorRequest', { code: state.form.message.code })
       : i18next.t(`messages.${state.form.message.code}`);
+    if (state.form.message.type === 'success') {
+      elements.feedback.classList.add('feedback', 'text-success', 'pt-2');
+      return;
+    }
+    elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
   }
 };
 
 export const renderPosts = (state) => {
   elements.posts.innerHTML = '';
-
   if (state.posts.length === 0) {
     return;
   }
-
   const activeChannel = elements.channels.querySelector('.list-group-item-primary');
   const activeChannelId = activeChannel.getAttribute('id');
   const activePosts = activeChannelId === 'all'
@@ -69,23 +65,21 @@ export const renderPosts = (state) => {
   activePosts.forEach((post) => {
     const liPost = document.createElement('li');
     liPost.classList.add('list-group-item');
+    liPost.setAttribute('channelId', post.channelId);
     const link = document.createElement('a');
     link.setAttribute('href', post.link);
     link.textContent = post.title;
-    liPost.setAttribute('channelId', post.channelId);
     liPost.append(link);
     ulPosts.appendChild(liPost);
-    elements.posts.append(ulPosts);
   });
+  elements.posts.append(ulPosts);
 };
 
 export const renderChannels = (state) => {
   elements.channels.innerHTML = '';
-
   if (state.channels.length === 0) {
     return;
   }
-
   const ulChannels = document.createElement('ul');
   ulChannels.classList.add('list-group');
 
@@ -115,15 +109,15 @@ export const renderChannels = (state) => {
 };
 
 export const renderSpinner = (state) => {
-  if (state.statusForm === 'loading') {
-    const div = document.createElement('div');
-    div.innerHTML = `<strong>Loading...</strong>
+  switch (state.statusForm) {
+    case 'loading':
+      elements.spinner.innerHTML = `<strong>Loading...</strong>
       <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>`;
-    div.classList.add('d-flex', 'align-items-centr', 'pt-3', 'pr-3');
-    elements.form.append(div);
-  }
-  if (state.statusForm === 'filling') {
-    const elementSpinner = elements.form.querySelector('.d-flex');
-    elementSpinner.remove();
+      break;
+    case 'filling':
+      elements.spinner.innerHTML = '';
+      break;
+    default:
+      throw new Error(`Unknown statusForm: '${state.statusForm}'!`);
   }
 };
