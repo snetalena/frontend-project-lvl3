@@ -93,10 +93,8 @@ export const renderChannels = (state, elements, i18next) => {
   channels.append(ulChannels);
   ulChannels.addEventListener('click', (event) => {
     const activeChannel = ulChannels.querySelector('.list-group-item-primary');
-    if (activeChannel) {
-      activeChannel.classList.remove('list-group-item-primary');
-    }
+    activeChannel.classList.remove('list-group-item-primary');
     event.target.classList.add('list-group-item-primary');
-    renderPosts(state);
+    renderPosts(state, elements);
   });
 };
