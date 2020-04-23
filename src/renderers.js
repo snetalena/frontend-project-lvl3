@@ -5,15 +5,12 @@ export const renderForm = (state, elements, i18next) => {
 
   button.textContent = i18next.t('mainButton');
   heading.textContent = i18next.t('heading');
-  input.classList.remove('is-invalid');
-  input.classList.remove('disabled');
+  input.classList.remove('is-invalid', 'disabled');
   input.value = state.form.inputText;
   button.classList.remove('disabled');
   spinner.innerHTML = '';
-  while (feedback.classList.length > 0) {
-    feedback.classList.remove(elements.feedback.classList.item(0));
-  }
-  feedback.innerHTML = '';
+  feedback.classList.remove('text-danger', 'text-success');
+  feedback.textContent = '';
 
   switch (state.RSSprocess.state) {
     case 'filling':
@@ -21,23 +18,27 @@ export const renderForm = (state, elements, i18next) => {
         button.classList.add('disabled');
         input.classList.add('is-invalid');
         feedback.textContent = i18next.t(`messages.${state.RSSprocess.error}`);
-        elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
+        feedback.classList.add('text-danger');
       }
       break;
+
     case 'sending':
       button.classList.add('disabled');
       input.classList.add('disabled');
       spinner.innerHTML = `<strong>Loading...</strong>
       <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>`;
       break;
+
     case 'failed':
       feedback.textContent = i18next.t('messages.errorRequest', { code: state.RSSprocess.error });
-      feedback.classList.add('feedback', 'text-danger', 'pt-2');
+      feedback.classList.add('text-danger');
       break;
+
     case 'successed':
       feedback.textContent = i18next.t('messages.successLoad');
-      feedback.classList.add('feedback', 'text-success', 'pt-2');
+      feedback.classList.add('text-success');
       break;
+
     default:
       throw new Error(`Unknown : RSSprocess.state '${state.RSSprocess.state}'!`);
   }

@@ -83,11 +83,11 @@ export default () => {
     heading: document.querySelector('.display-4'),
     input: document.querySelector('input'),
     button: document.querySelector('.btn[type="submit"]'),
-    feedback: document.getElementById('feedback'),
     spinner: document.getElementById('spinner'),
     form: document.querySelector('form'),
     posts: document.getElementById('posts'),
     channels: document.getElementById('channels'),
+    feedback: document.getElementById('feedback'),
   };
 
   renderForm(state, elements, i18next);
