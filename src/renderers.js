@@ -1,71 +1,55 @@
-export const renderForm = (state, i18next) => {
-  const elements = {
-    heading: document.querySelector('.display-4'),
-    input: document.querySelector('input'),
-    button: document.querySelector('.btn[type="submit"]'),
-    form: document.querySelector('form'),
-    feedback: document.getElementById('feedback'),
-    spinner: document.getElementById('spinner'),
-  };
+export const renderForm = (state, elements, i18next) => {
+  const {
+    heading, input, button, feedback, spinner,
+  } = elements;
 
-  elements.button.textContent = i18next.t('mainButton');
-  elements.heading.textContent = i18next.t('heading');
-
-  elements.input.classList.remove('is-invalid');
-  elements.input.classList.remove('disabled');
-  elements.input.value = state.form.inputText;
-
-  elements.button.classList.remove('disabled');
-
-  elements.spinner.innerHTML = '';
-
-  while (elements.feedback.classList.length > 0) {
-    elements.feedback.classList.remove(elements.feedback.classList.item(0));
+  button.textContent = i18next.t('mainButton');
+  heading.textContent = i18next.t('heading');
+  input.classList.remove('is-invalid');
+  input.classList.remove('disabled');
+  input.value = state.form.inputText;
+  button.classList.remove('disabled');
+  spinner.innerHTML = '';
+  while (feedback.classList.length > 0) {
+    feedback.classList.remove(elements.feedback.classList.item(0));
   }
-  elements.feedback.innerHTML = '';
+  feedback.innerHTML = '';
 
   switch (state.RSSprocess.state) {
     case 'filling':
       if (!state.form.valid) {
-        elements.button.classList.add('disabled');
-        elements.input.classList.add('is-invalid');
-        elements.feedback.textContent = i18next.t(`messages.${state.RSSprocess.error}`);
+        button.classList.add('disabled');
+        input.classList.add('is-invalid');
+        feedback.textContent = i18next.t(`messages.${state.RSSprocess.error}`);
         elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
       }
       break;
-
     case 'sending':
-      elements.button.classList.add('disabled');
-      elements.input.classList.add('disabled');
-      elements.spinner.innerHTML = `<strong>Loading...</strong>
+      button.classList.add('disabled');
+      input.classList.add('disabled');
+      spinner.innerHTML = `<strong>Loading...</strong>
       <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>`;
       break;
-
     case 'failed':
-      elements.feedback.textContent = i18next.t('messages.errorRequest', { code: state.RSSprocess.error });
-      elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
+      feedback.textContent = i18next.t('messages.errorRequest', { code: state.RSSprocess.error });
+      feedback.classList.add('feedback', 'text-danger', 'pt-2');
       break;
-
     case 'successed':
-      elements.feedback.textContent = i18next.t('messages.successLoad');
-      elements.feedback.classList.add('feedback', 'text-success', 'pt-2');
+      feedback.textContent = i18next.t('messages.successLoad');
+      feedback.classList.add('feedback', 'text-success', 'pt-2');
       break;
-
     default:
       throw new Error(`Unknown : RSSprocess.state '${state.RSSprocess.state}'!`);
   }
 };
 
-export const renderPosts = (state) => {
-  const elPosts = document.getElementById('posts');
-  const elChannels = document.getElementById('channels');
-
-  elPosts.innerHTML = '';
+export const renderPosts = (state, elements) => {
+  const { posts, channels } = elements;
+  posts.innerHTML = '';
   if (state.posts.length === 0) {
     return;
   }
-
-  const activeChannel = elChannels.querySelector('.list-group-item-primary');
+  const activeChannel = channels.querySelector('.list-group-item-primary');
   const activeChannelId = activeChannel.getAttribute('id');
   const activePosts = activeChannelId === 'all'
     ? state.posts
@@ -84,24 +68,20 @@ export const renderPosts = (state) => {
     liPost.append(link);
     ulPosts.appendChild(liPost);
   });
-  elPosts.append(ulPosts);
+  posts.append(ulPosts);
 };
 
-export const renderChannels = (state, i18next) => {
-  const elChannels = document.getElementById('channels');
-  elChannels.innerHTML = '';
-  if (state.channels.length === 0) {
-    return;
-  }
+export const renderChannels = (state, elements, i18next) => {
+  const { channels } = elements;
+  channels.innerHTML = '';
+  if (state.channels.length === 0) return;
   const ulChannels = document.createElement('ul');
   ulChannels.classList.add('list-group');
-
   const allChannel = document.createElement('li');
   allChannel.textContent = i18next.t('allChannels');
   allChannel.setAttribute('id', 'all');
   allChannel.classList.add('list-group-item', 'list-group-item-action', 'list-group-item-primary');
   ulChannels.appendChild(allChannel);
-
   state.channels.forEach((channel) => {
     const liChannel = document.createElement('li');
     liChannel.classList.add('list-group-item', 'list-group-item-action');
@@ -109,8 +89,7 @@ export const renderChannels = (state, i18next) => {
     liChannel.setAttribute('id', channel.id);
     ulChannels.appendChild(liChannel);
   });
-  elChannels.append(ulChannels);
-
+  channels.append(ulChannels);
   ulChannels.addEventListener('click', (event) => {
     const activeChannel = ulChannels.querySelector('.list-group-item-primary');
     if (activeChannel) {

@@ -21,9 +21,7 @@ const sendRequest = (url) => {
 };
 
 const filterChannelData = (channelData, state) => {
-
   const newPosts = _.differenceBy(channelData.posts, state.posts, 'link', 'title');
-
   return {
     rssLink: channelData.rssLink,
     channelTitle: channelData.channelTitle,
@@ -81,9 +79,20 @@ export default () => {
     posts: [], // { id, channelId, title, link, pubDate }
   };
 
-  renderForm(state, i18next);
-  renderChannels(state, i18next);
-  renderPosts(state);
+  const elements = {
+    heading: document.querySelector('.display-4'),
+    input: document.querySelector('input'),
+    button: document.querySelector('.btn[type="submit"]'),
+    feedback: document.getElementById('feedback'),
+    spinner: document.getElementById('spinner'),
+    form: document.querySelector('form'),
+    posts: document.getElementById('posts'),
+    channels: document.getElementById('channels'),
+  };
+
+  renderForm(state, elements, i18next);
+  renderChannels(state, elements, i18next);
+  renderPosts(state, elements);
 
   const updatePosts = () => {
     const promises = state.channels
@@ -94,20 +103,18 @@ export default () => {
   updatePosts(state);
 
   watch(state, 'RSSprocess', () => {
-    renderForm(state, i18next);
+    renderForm(state, elements, i18next);
   });
 
   watch(state, 'channels', () => {
-    renderChannels(state, i18next);
+    renderChannels(state, elements, i18next);
   });
 
   watch(state, 'posts', () => {
-    renderPosts(state);
+    renderPosts(state, elements);
   });
 
-  const elementInput = document.querySelector('input');
-
-  elementInput.addEventListener('keyup', async (event) => {
+  elements.input.addEventListener('keyup', async (event) => {
     const currentText = event.target.value;
     state.form.inputText = currentText;
     state.RSSprocess.state = 'filling';
@@ -130,9 +137,7 @@ export default () => {
       });
   });
 
-  const elementForm = document.querySelector('form');
-
-  elementForm.addEventListener('submit', (event) => {
+  elements.form.addEventListener('submit', (event) => {
     event.preventDefault();
     state.RSSprocess.state = 'sending';
 
