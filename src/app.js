@@ -1,26 +1,28 @@
 import * as yup from 'yup';
+import i18next from 'i18next';
 import { watch } from 'melanke-watchjs';
-import { uniqueId } from 'lodash';
+import _ from 'lodash';
 import axios from 'axios';
 import {
-  renderForm, renderChannels, renderPosts, renderSpinner,
+  renderForm, renderChannels, renderPosts,
 } from './renderers';
 import getChannelData from './parser';
+import resources from './locales';
+
+i18next.init({
+  lng: window.navigator.language.slice(0, 2),
+  debug: true,
+  resources,
+});
 
 const sendRequest = (url) => {
-  const proxy = 'cors-anywhere.herokuapp.com';
-  const link = url.slice(url.indexOf('/') + 2);
-  return axios.get(`https://${proxy}/${link}`);
+  const proxy = 'https://cors-anywhere.herokuapp.com';
+  return axios.get(`${proxy}/${url}`);
 };
 
 const filterChannelData = (channelData, state) => {
-  const newPosts = [];
-  channelData.posts.forEach((post) => {
-    if (!state.posts.find((statePost) => statePost.link === post.link
-      && statePost.title === post.title)) {
-      newPosts.push({ title: post.title, link: post.link });
-    }
-  });
+
+  const newPosts = _.differenceBy(channelData.posts, state.posts, 'link', 'title');
 
   return {
     rssLink: channelData.rssLink,
@@ -31,9 +33,9 @@ const filterChannelData = (channelData, state) => {
 };
 
 const addChannelDataToState = (channelData, state) => {
-  const channelExists = state.channels.find((channel) => channel.rssLink === channelData.rssLink);
-  const channelId = channelExists ? channelExists.id : uniqueId();
-  if (!channelExists) {
+  const channel = state.channels.find((chan) => chan.rssLink === channelData.rssLink);
+  const channelId = channel ? channel.id : _.uniqueId();
+  if (!channel) {
     state.channels.push({
       id: channelId,
       rssLink: channelData.rssLink,
@@ -43,7 +45,7 @@ const addChannelDataToState = (channelData, state) => {
   }
   channelData.posts.forEach((post) => {
     state.posts.push({
-      id: uniqueId(),
+      id: _.uniqueId(),
       channelId,
       title: post.title,
       link: post.link,
@@ -53,7 +55,7 @@ const addChannelDataToState = (channelData, state) => {
 };
 
 const upsertChannelDataFromUrl = (url, state) => sendRequest(url)
-  .then((response) => getChannelData(response.request.responseText))
+  .then((response) => getChannelData(response.data))
   .then((channelData) => {
     // eslint-disable-next-line no-param-reassign
     channelData.rssLink = url;
@@ -67,109 +69,82 @@ export default () => {
   });
 
   const state = {
+    RSSprocess: {
+      state: 'filling', // filling/sending/failed/sucessed
+      error: null,
+    },
     form: {
-      submitActive: false,
-      inputField: {
-        text: null,
-        active: true,
-        valid: true,
-      },
-      message: {
-        code: null,
-        type: null, // errorRequest, errorUrl, success
-      },
+      valid: true,
+      inputText: null,
     },
     channels: [], // { id, rssLink, title, description }
     posts: [], // { id, channelId, title, link, pubDate }
-    statusForm: 'filling',
   };
 
-  const markFormValid = () => {
-    state.form.submitActive = true;
-    state.form.inputField.active = true;
-    state.form.inputField.valid = true;
-    state.form.message.code = null;
-    state.form.submitActive = true;
-  };
-
-  const markFormInvalid = (messageCode) => {
-    state.form.submitActive = false;
-    state.form.inputField.active = true;
-    state.form.inputField.valid = messageCode === 'successLoad';
-    state.form.message.code = messageCode;
-    state.form.submitActive = false;
-  };
-
-  renderForm(state);
-  renderChannels(state);
+  renderForm(state, i18next);
+  renderChannels(state, i18next);
   renderPosts(state);
 
   const updatePosts = () => {
-    const promises = [];
-    state.channels.forEach((channel) => {
-      promises.push(upsertChannelDataFromUrl(channel.rssLink, state));
-    });
+    const promises = state.channels
+      .map((channel) => upsertChannelDataFromUrl(channel.rssLink, state));
     Promise.all(promises)
       .finally(() => setTimeout(() => updatePosts(), 5000));
   };
   updatePosts(state);
 
-  watch(state, 'form', () => {
-    renderForm(state);
+  watch(state, 'RSSprocess', () => {
+    renderForm(state, i18next);
   });
 
   watch(state, 'channels', () => {
-    renderChannels(state);
+    renderChannels(state, i18next);
   });
 
   watch(state, 'posts', () => {
     renderPosts(state);
   });
 
-  watch(state, 'statusForm', () => {
-    renderSpinner(state);
-  });
-
-  const checkUrlValid = (url) => schema.isValid({ website: url }).then((valid) => {
-    if (valid) {
-      markFormValid();
-      return;
-    }
-    state.form.message.type = 'errorUrl';
-    markFormInvalid('invalidURL');
-  });
-
   const elementInput = document.querySelector('input');
-  elementInput.focus();
+
   elementInput.addEventListener('keyup', async (event) => {
     const currentText = event.target.value;
-    state.form.inputField.text = currentText;
+    state.form.inputText = currentText;
+    state.RSSprocess.state = 'filling';
 
     if (state.channels.find((el) => el.rssLink === currentText)) {
-      state.form.message.type = 'errorUrl';
-      markFormInvalid('doublicatedURL');
+      state.RSSprocess.error = 'doublicatedURL';
+      state.form.valid = false;
       return;
     }
 
-    checkUrlValid(currentText);
+    schema.isValid({ website: currentText })
+      .then((valid) => {
+        if (valid) {
+          state.RSSprocess.error = null;
+          state.form.valid = true;
+          return;
+        }
+        state.RSSprocess.error = 'invalidURL';
+        state.form.valid = false;
+      });
   });
 
   const elementForm = document.querySelector('form');
+
   elementForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    state.statusForm = 'loading';
-    upsertChannelDataFromUrl(state.form.inputField.text, state)
+    state.RSSprocess.state = 'sending';
+
+    upsertChannelDataFromUrl(state.form.inputText, state)
       .then(() => {
-        state.form.message.type = 'success';
-        state.form.inputField.text = '';
-        markFormInvalid('successLoad');
+        state.form.inputText = '';
+        state.RSSprocess.error = null;
+        state.RSSprocess.state = 'successed';
       })
       .catch((err) => {
-        state.form.message.type = 'errorRequest';
-        markFormInvalid(err.response.status);
-      })
-      .finally(() => {
-        state.statusForm = 'filling';
+        state.RSSprocess.error = err.response.status;
+        state.RSSprocess.state = 'failed';
       });
   });
 };

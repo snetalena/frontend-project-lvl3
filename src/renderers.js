@@ -1,60 +1,71 @@
-import i18next from 'i18next';
-import resources from './locales';
+export const renderForm = (state, i18next) => {
+  const elements = {
+    heading: document.querySelector('.display-4'),
+    input: document.querySelector('input'),
+    button: document.querySelector('.btn[type="submit"]'),
+    form: document.querySelector('form'),
+    feedback: document.getElementById('feedback'),
+    spinner: document.getElementById('spinner'),
+  };
 
-const elements = {
-  heading: document.querySelector('.display-4'),
-  input: document.querySelector('input'),
-  button: document.querySelector('.btn[type="submit"]'),
-  channels: document.getElementById('channels'),
-  posts: document.getElementById('posts'),
-  form: document.querySelector('form'),
-  feedback: document.getElementById('feedback'),
-  spinner: document.getElementById('spinner'),
-};
-
-i18next.init({
-  lng: window.navigator.language.slice(0, 2),
-  debug: true,
-  resources,
-}).then(() => {
   elements.button.textContent = i18next.t('mainButton');
   elements.heading.textContent = i18next.t('heading');
-});
-
-export const renderForm = (state) => {
-  elements.button.classList.remove('disabled');
-  if (!state.form.submitActive || state.form.inputField.text === '') {
-    elements.button.classList.add('disabled');
-  }
 
   elements.input.classList.remove('is-invalid');
-  elements.input.value = state.form.inputField.text;
-  if (!state.form.inputField.valid && state.form.inputField.text !== '') {
-    elements.input.classList.add('is-invalid');
-  }
+  elements.input.classList.remove('disabled');
+  elements.input.value = state.form.inputText;
+
+  elements.button.classList.remove('disabled');
+
+  elements.spinner.innerHTML = '';
 
   while (elements.feedback.classList.length > 0) {
     elements.feedback.classList.remove(elements.feedback.classList.item(0));
   }
   elements.feedback.innerHTML = '';
-  if (state.form.message.code) {
-    elements.feedback.textContent = state.form.message.type === 'errorRequest'
-      ? i18next.t('messages.errorRequest', { code: state.form.message.code })
-      : i18next.t(`messages.${state.form.message.code}`);
-    if (state.form.message.type === 'success') {
+
+  switch (state.RSSprocess.state) {
+    case 'filling':
+      if (!state.form.valid) {
+        elements.button.classList.add('disabled');
+        elements.input.classList.add('is-invalid');
+        elements.feedback.textContent = i18next.t(`messages.${state.RSSprocess.error}`);
+        elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
+      }
+      break;
+
+    case 'sending':
+      elements.button.classList.add('disabled');
+      elements.input.classList.add('disabled');
+      elements.spinner.innerHTML = `<strong>Loading...</strong>
+      <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>`;
+      break;
+
+    case 'failed':
+      elements.feedback.textContent = i18next.t('messages.errorRequest', { code: state.RSSprocess.error });
+      elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
+      break;
+
+    case 'successed':
+      elements.feedback.textContent = i18next.t('messages.successLoad');
       elements.feedback.classList.add('feedback', 'text-success', 'pt-2');
-      return;
-    }
-    elements.feedback.classList.add('feedback', 'text-danger', 'pt-2');
+      break;
+
+    default:
+      throw new Error(`Unknown : RSSprocess.state '${state.RSSprocess.state}'!`);
   }
 };
 
 export const renderPosts = (state) => {
-  elements.posts.innerHTML = '';
+  const elPosts = document.getElementById('posts');
+  const elChannels = document.getElementById('channels');
+
+  elPosts.innerHTML = '';
   if (state.posts.length === 0) {
     return;
   }
-  const activeChannel = elements.channels.querySelector('.list-group-item-primary');
+
+  const activeChannel = elChannels.querySelector('.list-group-item-primary');
   const activeChannelId = activeChannel.getAttribute('id');
   const activePosts = activeChannelId === 'all'
     ? state.posts
@@ -62,6 +73,7 @@ export const renderPosts = (state) => {
 
   const ulPosts = document.createElement('ul');
   ulPosts.classList.add('list-group');
+
   activePosts.forEach((post) => {
     const liPost = document.createElement('li');
     liPost.classList.add('list-group-item');
@@ -72,11 +84,12 @@ export const renderPosts = (state) => {
     liPost.append(link);
     ulPosts.appendChild(liPost);
   });
-  elements.posts.append(ulPosts);
+  elPosts.append(ulPosts);
 };
 
-export const renderChannels = (state) => {
-  elements.channels.innerHTML = '';
+export const renderChannels = (state, i18next) => {
+  const elChannels = document.getElementById('channels');
+  elChannels.innerHTML = '';
   if (state.channels.length === 0) {
     return;
   }
@@ -96,7 +109,7 @@ export const renderChannels = (state) => {
     liChannel.setAttribute('id', channel.id);
     ulChannels.appendChild(liChannel);
   });
-  elements.channels.append(ulChannels);
+  elChannels.append(ulChannels);
 
   ulChannels.addEventListener('click', (event) => {
     const activeChannel = ulChannels.querySelector('.list-group-item-primary');
@@ -104,20 +117,6 @@ export const renderChannels = (state) => {
       activeChannel.classList.remove('list-group-item-primary');
     }
     event.target.classList.add('list-group-item-primary');
-    renderPosts(state, elements);
+    renderPosts(state);
   });
-};
-
-export const renderSpinner = (state) => {
-  switch (state.statusForm) {
-    case 'loading':
-      elements.spinner.innerHTML = `<strong>Loading...</strong>
-      <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>`;
-      break;
-    case 'filling':
-      elements.spinner.innerHTML = '';
-      break;
-    default:
-      throw new Error(`Unknown statusForm: '${state.statusForm}'!`);
-  }
 };
