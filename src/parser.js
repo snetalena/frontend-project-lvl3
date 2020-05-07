@@ -1,4 +1,4 @@
-const getChannelData = (data) => {
+const parseRSS = (data) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(data, 'application/xml');
   // TODO: check if xml?
@@ -18,4 +18,4 @@ const getChannelData = (data) => {
   };
 };
 
-export default getChannelData;
+export default parseRSS;

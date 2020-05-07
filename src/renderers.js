@@ -1,4 +1,6 @@
-export const renderForm = (state, elements, i18next) => {
+import i18next from 'i18next';
+
+export const renderForm = (state, elements) => {
   const {
     heading, input, button, feedback, spinner,
   } = elements;
@@ -72,7 +74,7 @@ export const renderPosts = (state, elements) => {
   posts.append(ulPosts);
 };
 
-export const renderChannels = (state, elements, i18next) => {
+export const renderChannels = (state, elements) => {
   const { channels } = elements;
   channels.innerHTML = '';
   if (state.channels.length === 0) return;
