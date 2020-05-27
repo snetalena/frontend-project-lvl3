@@ -14,31 +14,31 @@ const sendRequest = (url) => {
   return axios.get(`${proxy}/${url}`);
 };
 
-const filterRSSData = (RSSdata, state) => {
-  const newPosts = _.differenceBy(RSSdata.posts, state.posts, 'link', 'title');
+const filterRSSData = (dataRSS, state) => {
+  const newPosts = _.differenceBy(dataRSS.posts, state.posts, 'link', 'title');
   return {
-    rssLink: RSSdata.rssLink,
-    channelTitle: RSSdata.channelTitle,
-    channelDescription: RSSdata.channelDescription,
+    rssLink: dataRSS.rssLink,
+    channelTitle: dataRSS.channelTitle,
+    channelDescription: dataRSS.channelDescription,
     posts: newPosts,
   };
 };
 
-const addRSSdataToState = (RSSdata, state) => {
-  const channelInState = state.channels.find((channel) => channel.rssLink === RSSdata.rssLink);
-  const channelId = channelInState ? channelInState.id : _.uniqueId();
-  if (!channelInState) {
-    state.channels.push({
-      id: channelId,
-      rssLink: RSSdata.rssLink,
-      title: RSSdata.channelTitle,
-      description: RSSdata.channelDescription,
-    });
-  }
-  RSSdata.posts.forEach((post) => {
+const addChannelDataToState = (dataRSS, state) => {
+  state.channels.push({
+    id: _.uniqueId(),
+    rssLink: dataRSS.rssLink,
+    title: dataRSS.channelTitle,
+    description: dataRSS.channelDescription,
+  });
+};
+
+const addPostsDataToState = (dataRSS, state) => {
+  const currentChannel = state.channels.find((channel) => channel.rssLink === dataRSS.rssLink);
+  dataRSS.posts.forEach((post) => {
     state.posts.push({
       id: _.uniqueId(),
-      channelId,
+      channelId: currentChannel.id,
       title: post.title,
       link: post.link,
       pubDate: post.pubDate,
@@ -46,37 +46,47 @@ const addRSSdataToState = (RSSdata, state) => {
   });
 };
 
-const upsertRSSdataFromUrl = (url, state) => sendRequest(url)
-  .then((response) => parseRSS(response.data))
+const getRSSdataFromUrl = (url) => sendRequest(url)
+  .then((response) => parseRSS(response.data));
+
+const loadRSSdataToState = (url, state) => getRSSdataFromUrl(url)
   .then((RSSdata) => {
     // eslint-disable-next-line no-param-reassign
     RSSdata.rssLink = url;
-    const filteredRSSdata = filterRSSData(RSSdata, state);
-    addRSSdataToState(filteredRSSdata, state);
+    addChannelDataToState(RSSdata, state);
+    addPostsDataToState(RSSdata, state);
+  });
+
+const updateRSSdataInState = (url, state) => getRSSdataFromUrl(url)
+  .then((RSSdata) => {
+    const newRSSdata = filterRSSData(RSSdata, state);
+    addPostsDataToState(newRSSdata, state);
   });
 
 export default () => {
-  const schema = yup.object().shape({
-    website: yup.string().url(),
-  });
-
   i18next.init({
     lng: window.navigator.language.slice(0, 2),
     debug: true,
     resources,
   });
 
-  const state = {
-    RSSprocess: {
-      state: 'filling', // filling/sending/failed/sucessed
-      error: null,
+  const errorMessages = {
+    request: (statusCode) => statusCode,
+    url: {
+      valid: 'invalidURL',
+      doublicated: 'doublicatedURL',
     },
+  };
+
+  const state = {
     form: {
       valid: true,
       inputText: null,
+      processState: 'filling',
     },
+    errors: { message: '' },
     channels: [], // { id, rssLink, title, description }
-    posts: [], // { id, channelId, title, link, pubDate }
+    posts: [], // { id, channelId, title, link }
   };
 
   const elements = {
@@ -96,13 +106,13 @@ export default () => {
 
   const updatePosts = () => {
     const promises = state.channels
-      .map((channel) => upsertRSSdataFromUrl(channel.rssLink, state));
+      .map((channel) => updateRSSdataInState(channel.rssLink, state));
     Promise.all(promises)
       .finally(() => setTimeout(() => updatePosts(), 5000));
   };
   updatePosts(state);
 
-  watch(state, 'RSSprocess', () => {
+  watch(state, 'form', () => {
     renderForm(state, elements, i18next);
   });
 
@@ -114,45 +124,51 @@ export default () => {
     renderPosts(state, elements);
   });
 
-  const validateURL = (url) => schema.isValid({ website: url })
-    .then((valid) => {
-      if (!valid) {
-        return 'invalidURL';
-      }
-      if (state.channels.find((channel) => channel.rssLink === url)) {
-        return 'doublicatedURL';
-      }
-      return null;
-    });
+  const validateURL = (url) => {
+    const addedRSSlinks = state.channels.map((channel) => channel.rssLink);
+    const schema = yup.object()
+      .shape({
+        website: yup
+          .string()
+          .url(errorMessages.url.valid)
+          .notOneOf(addedRSSlinks, errorMessages.url.doublicated),
+      });
+
+    return schema.validate({ website: url });
+  };
 
   const updateValidationState = () => {
+    const errors = {};
     validateURL(state.form.inputText)
-      .then((error) => {
-        state.RSSprocess.error = error;
-        state.form.valid = !error;
+      .catch((err) => {
+        errors.message = err.errors;
+      })
+      .finally(() => {
+        state.errors = errors;
+        state.form.valid = _.isEqual(errors, {});
       });
   };
 
   elements.input.addEventListener('keyup', async (event) => {
     const currentText = event.target.value;
     state.form.inputText = currentText;
-    state.RSSprocess.state = 'filling';
+    state.form.processState = 'filling';
     updateValidationState();
   });
 
   elements.form.addEventListener('submit', (event) => {
     event.preventDefault();
-    state.RSSprocess.state = 'sending';
+    state.form.processState = 'sending';
 
-    upsertRSSdataFromUrl(state.form.inputText, state)
+    loadRSSdataToState(state.form.inputText, state)
       .then(() => {
         state.form.inputText = '';
-        state.RSSprocess.error = null;
-        state.RSSprocess.state = 'successed';
+        state.form.processState = 'successed';
       })
       .catch((err) => {
-        state.RSSprocess.error = err.response.status;
-        state.RSSprocess.state = 'failed';
+        state.errors.message = errorMessages.request(err.response.status);
+        state.form.valid = false;
+        state.form.processState = 'failed';
       });
   });
 };

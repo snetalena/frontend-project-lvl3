@@ -1,27 +1,34 @@
 import i18next from 'i18next';
 
+const renderFeedback = (elements, feedbackType, feedbackText) => {
+  const { feedback } = elements;
+  feedback.classList.remove('text-danger', 'text-success');
+  feedback.classList.add(feedbackType);
+  feedback.textContent = feedbackText;
+};
+
 export const renderForm = (state, elements) => {
   const {
-    heading, input, button, feedback, spinner,
+    heading, input, button, spinner,
   } = elements;
 
   button.textContent = i18next.t('mainButton');
   heading.textContent = i18next.t('heading');
-  input.classList.remove('is-invalid', 'disabled');
   input.value = state.form.inputText;
+
+  input.classList.remove('disabled', 'is-invalid');
   button.classList.remove('disabled');
   spinner.innerHTML = '';
-  feedback.classList.remove('text-danger', 'text-success');
-  feedback.textContent = '';
 
-  switch (state.RSSprocess.state) {
+  switch (state.form.processState) {
     case 'filling':
       if (!state.form.valid) {
         button.classList.add('disabled');
         input.classList.add('is-invalid');
-        feedback.textContent = i18next.t(`messages.${state.RSSprocess.error}`);
-        feedback.classList.add('text-danger');
+        renderFeedback(elements, 'text-danger', i18next.t(`messages.${state.errors.message}`));
+        return;
       }
+      renderFeedback(elements, 'text-success', '');
       break;
 
     case 'sending':
@@ -32,17 +39,15 @@ export const renderForm = (state, elements) => {
       break;
 
     case 'failed':
-      feedback.textContent = i18next.t('messages.errorRequest', { code: state.RSSprocess.error });
-      feedback.classList.add('text-danger');
+      renderFeedback(elements, 'text-danger', i18next.t('messages.errorRequest', { code: state.errors.message }));
       break;
 
     case 'successed':
-      feedback.textContent = i18next.t('messages.successLoad');
-      feedback.classList.add('text-success');
+      renderFeedback(elements, 'text-success', i18next.t('messages.successLoad'));
       break;
 
     default:
-      throw new Error(`Unknown : RSSprocess.state '${state.RSSprocess.state}'!`);
+      throw new Error(`Unknown : RSSprocess.state '${state.form.processState}'!`);
   }
 };
 
