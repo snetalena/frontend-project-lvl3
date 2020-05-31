@@ -49,14 +49,6 @@ const addPostsDataToState = (dataRSS, state) => {
 const getRSSdataFromUrl = (url) => sendRequest(url)
   .then((response) => parseRSS(response.data));
 
-const loadRSSdataToState = (url, state) => getRSSdataFromUrl(url)
-  .then((RSSdata) => {
-    // eslint-disable-next-line no-param-reassign
-    RSSdata.rssLink = url;
-    addChannelDataToState(RSSdata, state);
-    addPostsDataToState(RSSdata, state);
-  });
-
 const updateRSSdataInState = (url, state) => getRSSdataFromUrl(url)
   .then((RSSdata) => {
     const newRSSdata = filterRSSData(RSSdata, state);
@@ -124,14 +116,13 @@ export default () => {
     renderPosts(state, elements);
   });
 
-  const validateURL = (url) => {
-    const addedRSSlinks = state.channels.map((channel) => channel.rssLink);
+  const validateURL = (url, addedRSSurls) => {
     const schema = yup.object()
       .shape({
         website: yup
           .string()
           .url(errorMessages.url.valid)
-          .notOneOf(addedRSSlinks, errorMessages.url.doublicated),
+          .notOneOf(addedRSSurls, errorMessages.url.doublicated),
       });
 
     return schema.validate({ website: url });
@@ -139,7 +130,8 @@ export default () => {
 
   const updateValidationState = () => {
     const errors = {};
-    validateURL(state.form.inputText)
+    const addedRSSurls = state.channels.map((channel) => channel.rssLink);
+    validateURL(state.form.inputText, addedRSSurls)
       .catch((err) => {
         errors.message = err.errors;
       })
@@ -160,8 +152,13 @@ export default () => {
     event.preventDefault();
     state.form.processState = 'sending';
 
-    loadRSSdataToState(state.form.inputText, state)
-      .then(() => {
+    const url = state.form.inputText;
+    getRSSdataFromUrl(url)
+      .then((RSSdata) => {
+        // eslint-disable-next-line no-param-reassign
+        RSSdata.rssLink = url;
+        addChannelDataToState(RSSdata, state);
+        addPostsDataToState(RSSdata, state);
         state.form.inputText = '';
         state.form.processState = 'successed';
       })
